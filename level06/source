@@ -1,0 +1,67 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ptrace.h>
+
+int auth(char *login, unsigned int serial)
+{
+	int i;
+	unsigned int hash;
+	size_t len;
+
+	len = strcspn(login, "\n");
+	login[len] = 0;
+	len = strlen(login);
+
+	if (len <= 5)
+		return (1);
+
+	if (ptrace(PTRACE_TRACEME, 0, 1, 0) == -1)
+	{
+		puts("\033[32m.---------------------------.");
+		puts("\033[31m| !! ERROR PB INTERNE !!    |");
+		puts("\033[32m'---------------------------'");
+		return (1);
+	}
+
+	hash = (login[3] ^ 0x1337) + 0x5EEDED;
+
+	for (i = 0; i < len; i++)
+	{
+		if (login[i] <= 31)
+			return (1);
+		hash += (hash ^ (unsigned int)login[i]) % 0x539;
+	}
+
+	if (serial == hash)
+		return (0);
+	return (1);
+}
+
+int main(int argc, char **argv)
+{
+	char login[32];
+	unsigned int serial;
+
+	puts("***********************************");
+	puts("*		level06		  *");
+	puts("***********************************");
+
+	printf("-> Enter Login: ");
+	fgets(login, 32, stdin);
+
+	puts("***********************************");
+	puts("***** NEW ACCOUNT DETECTED ********");
+	puts("***********************************");
+
+	printf("-> Enter Serial: ");
+	scanf("%u", &serial);
+
+	if (auth(login, serial) == 0)
+	{
+		puts("Authenticated!");
+		system("/bin/sh");
+		return (0);
+	}
+	return (1);
+}

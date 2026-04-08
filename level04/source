@@ -1,0 +1,44 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/ptrace.h>
+#include <sys/prctl.h>
+#include <sys/wait.h>
+#include <sys/user.h>
+
+int main(int argc, char **argv) {
+    pid_t pid;
+    int status = 0;
+    long syscall_num = 0;
+    char buffer[128];
+
+    pid = fork();
+    memset(buffer, 0, 128);
+
+    if (pid == 0) {
+        prctl(PR_SET_PDEATHSIG, SIGHUP);
+        ptrace(PTRACE_TRACEME, 0, NULL, NULL);
+        
+        puts("Give me some shellcode, PLease");
+        gets(buffer);
+    } 
+    else {
+        do {
+            wait(&status);
+            
+            syscall_num = ptrace(PTRACE_PEEKUSER, pid, 44, NULL);
+            
+            if (syscall_num == 11) {
+                puts("no exec() for you");
+                kill(pid, 9);
+                break;
+            }
+            
+            ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
+            
+        } while (WIFEXITED(status) == 0);
+    }
+
+    return 0;
+}
