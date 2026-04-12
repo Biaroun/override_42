@@ -1,0 +1,62 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+void decrypt(int key) {
+    char s[] = "Q}|u`gsfg~sf{}|a3";
+
+    for (int i = 0; s[i]; i++) {
+        s[i] = s[i] ^ key;
+    }
+
+    if (strcmp(s, "Congratulations!") == 0) {
+        system("/bin/sh");
+    } else {
+        puts("Invalid Password");
+    }
+}
+
+void test(int input, int secret) {
+    int diff = secret - input;
+
+    if (diff > 21) {
+        decrypt(rand());
+    } else {
+        switch (diff) {
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+            case 6:
+            case 7:
+            case 8:
+            case 9:
+            case 16:
+            case 17:
+            case 18:
+            case 19:
+            case 20: 
+            case 21: 
+                decrypt(diff);
+                break;
+        }
+    }
+}
+
+int main() {
+    int input;
+
+    srand(time(0));
+
+    puts("***********************************");
+    puts("* Override            *");
+    puts("***********************************");
+    printf("Password:");
+
+    scanf("%d", &input);
+    test(input, 0x1337d00d);
+
+    return 0;
+}

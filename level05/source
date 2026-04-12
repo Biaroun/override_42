@@ -1,0 +1,23 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main(void) {
+    char buffer[100];
+    int i;
+
+    i = 0;
+
+    if (fgets(buffer, 100, stdin) == NULL) {
+        exit(0);
+    }
+    while (i < (int)strlen(buffer)) {
+        if (buffer[i] > 0x40 && buffer[i] <= 0x5a) {
+            buffer[i] = buffer[i] ^ 0x20;
+        }
+        i++;
+    }
+    printf(buffer);
+    exit(0);
+    return 0;
+}

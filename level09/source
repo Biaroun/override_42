@@ -1,0 +1,68 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+typedef struct s_msg
+{
+    char    data[0x8c];
+    char    username[40];
+    int     len_msg;
+    char    message[40];
+}               t_msg;
+
+void    secret_backdoor(void)
+{
+    char    buf[0x80];
+
+    fgets(buf, 0x80, stdin);
+    system(buf);
+}
+
+void    set_msg(t_msg *msg)
+{
+    char    buf[0x400];
+
+    memset(buf, 0, 0x400);
+    puts("Enter your message :");
+    printf("> ");
+    fgets(buf, 0x400, stdin);
+    strncpy((char *)msg, buf, msg->len_msg);
+}
+
+void    set_username(t_msg *msg)
+{
+    char    s[0x80];
+    int     i;
+
+    memset(s, 0, 0x80);
+    puts("Enter your username :");
+    printf("> ");
+    fgets(s, 0x80, stdin);
+
+    i = 0;
+    while (i <= 40 && s[i])
+    {
+        *((char *)msg + 0x8c + i) = s[i];
+        i++;
+    }
+    printf("Hello %s !\n", msg->username);
+}
+
+void    handle_msg(void)
+{
+    t_msg   msg;
+
+    memset((char *)&msg + 0x8c, 0, 40);
+    msg.len_msg = 0x8c;
+
+    set_username(&msg);
+    set_msg(&msg);
+    puts("Message sent!");
+}
+
+int     main(void)
+{
+    puts("-------- MESSAGING SERVICE --------");
+    handle_msg();
+    return (0);
+}
